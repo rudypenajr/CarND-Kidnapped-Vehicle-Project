@@ -126,7 +126,6 @@ void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::ve
 		for (int j=0; j < predicted.size(); ++j) {
 			LandmarkObs predicted_land = predicted[j];
 			double distance = dist(predicted_land.x, predicted_land.y, observed_land.x, observed_land.y);
-			cout << "Landmark vs Predicted: " << distance << endl;
 
 			if (j == 0) {
 				new_x = predicted_land.x;
