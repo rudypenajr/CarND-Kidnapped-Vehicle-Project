@@ -111,6 +111,39 @@ void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::ve
 	// NOTE: this method will NOT be called by the grading code. But you will probably find it useful to
 	//   implement this method and use it as a helper during the updateWeights phase.
 
+	// Helpful Link: https://discussions.udacity.com/t/implementing-data-association/243745/7
+	// for each particle:
+	// -> for each observation:
+	// --> transform_observation_to_map
+	// ---> for each landmark:
+	// ----> calc euclidean distance and associate TO particle THE landmark_id w/ THE min_distance
+	for (int i=0; i < observations.size(); ++i) {
+		double lowest_distance;
+		double new_x;
+		double new_y;
+		LandmarkObs observed_land = observations[i];
+
+		for (int j=0; j < predicted.size(); ++j) {
+			LandmarkObs predicted_land = predicted[j];
+			double distance = dist(predicted_land.x, predicted_land.y, observed_land.x, observed_land.y);
+			cout << "Landmark vs Predicted: " << distance << endl;
+
+			if (j == 0) {
+				new_x = predicted_land.x;
+				new_y = predicted_land.y;
+				lowest_distance = distance;
+			} else {
+				if (distance < lowest_distance) {
+					new_x = predicted_land.x;
+					new_y = predicted_land.y;
+					lowest_distance = distance;
+				}
+			}
+
+			observations[i].x = new_x;
+			observations[i].y = new_y;
+		}
+	}
 }
 
 void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
