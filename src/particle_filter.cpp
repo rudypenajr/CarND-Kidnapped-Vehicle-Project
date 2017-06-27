@@ -148,8 +148,8 @@ void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::ve
 
 void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 		std::vector<LandmarkObs> observations, Map map_landmarks) {
-	// TODO: Update the weights of each particle using a mult-variate Gaussian distribution. You can read
-	//   more about this distribution here: https://en.wikipedia.org/wiki/Multivariate_normal_distribution
+	// TODO: Update the weights of each particle using a mult-variate Gaussian distribution.
+	// You can read more about this distribution here: https://en.wikipedia.org/wiki/Multivariate_normal_distribution
 	// NOTE: The observations are given in the VEHICLE'S coordinate system. Your particles are located
 	//   according to the MAP'S coordinate system. You will need to transform between the two systems.
 	//   Keep in mind that this transformation requires both rotation AND translation (but no scaling).
@@ -158,6 +158,73 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 	//   and the following is a good resource for the actual equation to implement (look at equation
 	//   3.33
 	//   http://planning.cs.uiuc.edu/node99.html
+	//
+	// NOTE: Great Additional Resource: https://discussions.udacity.com/t/kidnapped-vehicle-p3-tips/245197
+	// Particles -> Observations -> Landmarks.
+	// for particles
+	// --> for observations (vehicle coordinates system)
+	// ---> for landmarks
+
+
+	for (int i=0; i < num_particles; ++i) {
+		Particle &p = particles[i];
+
+		// initialize weight
+		double weight = 1.0;
+
+		for (auto &obs: observations) {
+			// observations (vehicle coordinates system)
+			// convert to map coordinates
+			double obs_x;
+			double obs_y;
+
+			// http://planning.cs.uiuc.edu/node99.html
+			// x * cos(theta) - y * sin(theta) + p.x
+			// x * sin(theta) + y * cos(theta) + p.y
+			obs_x = obs.x * cos(p.theta) - obs.y * sin(p.theta) + p.x;
+			obs_y = obs.x * sin(p.theta) + obs.y * cos(p.theta) + p.y;
+
+			// Assign each observation to the closest landmark
+			Map::single_landmark_s closest_landmark = { 0, 0.0, 0.0 };
+			double min_distance_observation_to_landmark = sensor_range;
+
+			for (auto &landmark: map_landmarks.landmark_list) {
+				// calculate particle to landmark distance
+				double distance_particle_to_landmark = dist(p.x, p.y, landmark.x_f, landmark.y_f);
+
+				if (distance_particle_to_landmark <= sensor_range) {
+					double distance_observation_to_landmark = dist(obs_x, obs_y, landmark.x_f, landmark.y_f);
+
+					if (distance_observation_to_landmark < min_distance_observation_to_landmark) {
+						min_distance_observation_to_landmark = distance_observation_to_landmark;
+						closest_landmark = landmark;
+					}
+				}
+			}
+
+			// multivariate gaussian probaili density function TIME!
+			double x_diff = closest_landmark.x_f - obs_x;
+			double y_diff = closest_landmark.y_f - obs_y;
+			double std_x = std_landmark[0];
+			double std_y = std_landmark[1];
+
+			double x_y_term = ( (x_diff * x_diff) / (2 * std_x * std_x) ) + ( (y_diff * y_diff) / (2 * std_y * std_y) );
+			long double w = exp(-0.5 * x_y_term) / (2 * M_PI * std_x * std_y);
+
+			weight = weight * w;
+		}
+
+		p.weight = weight;
+		weights[i] = weight;
+	}
+
+	// weights normalization
+	double weights_sum = accumulate(weights.begin(), weights.end(), 0.0);
+
+	for (int i =0; i<num_particles; ++i) {
+		particles[i].weight = particles[i].weight / weights_sum;
+		weights[i] = particles[i].weight;
+	}
 }
 
 void ParticleFilter::resample() {
